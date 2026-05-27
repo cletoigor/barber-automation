@@ -1,56 +1,59 @@
 # barber-automation
 
-Automação de agendamento de assinatura na [the barbershop](https://agendamentos.bestbarbers.app/barbershop/id/12345) via API do BestBarbers.
+Automates weekly beard appointment booking at [the barbershop](https://agendamentos.bestbarbers.app/barbershop/id/12345) via the BestBarbers API. Finds the next available Friday slot within preferred hours (09:30–11:00), books it, and optionally updates a Google Calendar event when the time differs from the default.
 
-## Configuração
+## Scripts
 
-Rode `get_token.py` para abrir o site no browser, fazer login e salvar o token localmente em `token.json` (válido ~60 dias):
+### `schedule_recurring.py`
+The main automation. Finds the next available Friday, checks that the week isn't already booked, creates the appointment, and triggers a Google Calendar update if needed. If no slot is available, it creates a warning event on the calendar instead.
+
+```bash
+python3 schedule_recurring.py           # book the next available Friday
+python3 schedule_recurring.py --all     # attempt to book all upcoming Fridays
+python3 schedule_recurring.py --dry-run # simulate without creating any appointment
+```
+
+### `book.py`
+Lower-level script for on-demand booking. Searches across any barber and day range.
+
+```bash
+python3 book.py                         # next available slot (default: barber B, Beard Club)
+python3 book.py --barber 13002          # specific barber
+python3 book.py --days 14              # search up to 14 days ahead
+python3 book.py --dry-run
+```
+
+### `get_token.py`
+Opens the barbershop website in a browser for manual login, then captures and saves the session token to `token.json` (valid for ~60 days).
 
 ```bash
 python3 get_token.py
 ```
 
-## Scripts
+## Authentication
 
-### `book.py`
-Busca o próximo horário disponível e cria o agendamento.
+Run `get_token.py` once to save the session token locally. The scripts will use `token.json` automatically on subsequent runs.
 
-```bash
-python3 book.py                      # próximo horário (padrão: barber B, Barba Club)
-python3 book.py --barber 13002       # barbeiro específico
-python3 book.py --days 14            # buscar nos próximos 14 dias
-python3 book.py --dry-run            # simular sem criar agendamento
-```
+## Barbers
 
-### `schedule_recurring.py`
-Agenda a barba toda sexta-feira (tenta 09:30 → 10:00 → 10:30 → 11:00). Se o horário agendado for diferente de 09:30, atualiza automaticamente o Google Calendar.
-
-```bash
-python3 schedule_recurring.py        # agenda a próxima sexta disponível
-python3 schedule_recurring.py --all  # tenta agendar todas as sextas futuras
-python3 schedule_recurring.py --dry-run
-```
-
-## Barbeiros
-
-| ID    | Nome      |
+| ID    | Name      |
 |-------|-----------|
 | 13001 | barber B    |
 | 13002 | barber C     |
 | 13000 | barber A |
 | 13003 | barber D    |
 
-## Serviços de assinatura
+## Subscription services
 
-| ID    | Serviço             |
+| ID    | Service             |
 |-------|---------------------|
-| 47000 | Barba Club          |
-| 47001 | Cabelo Club         |
-| 47002 | Cabelo e Barba Club |
+| 47000 | Beard Club          |
+| 47001 | Hair Club           |
+| 47002 | Hair & Beard Club   |
 
-## Dependências
+## Dependencies
 
 ```bash
 pip install requests python-dotenv playwright
-playwright install chromium  # apenas para get_token.py
+playwright install chromium  # only needed for get_token.py
 ```
