@@ -1,11 +1,11 @@
 """
-Automação de agendamento de assinatura — the barbershop (BestBarbers)
+Subscription appointment automation — the barbershop (BestBarbers)
 
-Uso:
-    python3 book.py                  # próximo horário disponível com preferências padrão
-    python3 book.py --barber 13001   # barbeiro específico (barber B=13001, barber C=13002, etc.)
-    python3 book.py --days 5         # buscar horários nos próximos N dias
-    python3 book.py --dry-run        # simular sem criar agendamento
+Usage:
+    python3 book.py                  # next available slot with default preferences
+    python3 book.py --barber 13001   # specific barber (barber B=13001, barber C=13002, etc.)
+    python3 book.py --days 5         # search slots in the next N days
+    python3 book.py --dry-run        # simulate without creating an appointment
 """
 
 import argparse

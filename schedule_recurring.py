@@ -1,12 +1,12 @@
 """
-Agenda barba de assinatura toda sexta-feira.
-Tenta 09:30 → 10:00 → 10:30 → 11:00. Só agenda se houver slot disponível.
-Se o horário agendado for diferente de 09:30, atualiza o Google Calendar.
+Books a subscription beard appointment every Friday.
+Tries 09:30 → 10:00 → 10:30 → 11:00. Only books if a slot is available.
+If the booked time differs from 09:30, updates the Google Calendar event.
 
-Uso:
-    python3 schedule_recurring.py              # próxima sexta disponível
-    python3 schedule_recurring.py --all        # tenta agendar todas as datas futuras
-    python3 schedule_recurring.py --dry-run    # simula sem criar agendamento
+Usage:
+    python3 schedule_recurring.py              # next available Friday
+    python3 schedule_recurring.py --all        # attempt to book all upcoming Fridays
+    python3 schedule_recurring.py --dry-run    # simulate without creating an appointment
 """
 
 import argparse
