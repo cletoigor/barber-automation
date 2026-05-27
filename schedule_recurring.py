@@ -21,11 +21,11 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-API = "https://api.bestbarbers.app"
-BARBERSHOP_ID = 12345
-CLIENT_ID = 99999
-BARBER_ID = 13001          # barber B
-SERVICES = [47000]         # Barba Club (assinatura)
+API = os.getenv("BARBER_API", "https://api.bestbarbers.app")
+BARBERSHOP_ID = int(os.getenv("BARBERSHOP_ID", 12345))
+CLIENT_ID = int(os.getenv("CLIENT_ID", 99999))
+BARBER_ID = int(os.getenv("DEFAULT_BARBER_ID", 13001))
+SERVICES = [int(s) for s in os.getenv("DEFAULT_SERVICES", "47000").split(",")]
 PREFERRED_HOURS = ["09:30", "10:00", "10:30", "11:00"]
 CLAUDE_BIN = "/opt/homebrew/bin/claude"
 

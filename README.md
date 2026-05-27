@@ -30,6 +30,24 @@ Opens the barbershop website in a browser for manual login, then captures and sa
 python3 get_token.py
 ```
 
+## Configuration
+
+Create a `.env` file in the project root:
+
+```env
+BARBER_API=https://api.bestbarbers.app
+BARBERSHOP_ID=12345
+CLIENT_ID=99999
+
+# Barbers: 13001=barber B | 13002=barber C | 13000=barber A | 13003=barber D
+DEFAULT_BARBER_ID=13001
+
+# Subscription services: 47000=Beard Club | 47001=Hair Club | 47002=Hair+Beard Club
+DEFAULT_SERVICES=47000
+```
+
+All values fall back to the defaults above if the variable is not set. For multiple services, use a comma-separated list: `DEFAULT_SERVICES=47000,47001`.
+
 ## Authentication
 
 Run `get_token.py` once to save the session token locally. The scripts will use `token.json` automatically on subsequent runs.

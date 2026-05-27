@@ -19,17 +19,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API = "https://api.bestbarbers.app"
-BARBERSHOP_ID = 12345
-CLIENT_ID = 99999  # the client
-
-# Barbers disponíveis:
-# 13001 = barber B | 13002 = barber C | 13000 = barber A | 13003 = barber D
-DEFAULT_BARBER_ID = 13001
-
-# Serviços de assinatura disponíveis:
-# 47000 = Barba Club | 47001 = Cabelo Club | 47002 = Cabelo e Barba Club
-DEFAULT_SERVICES = [47000]  # Barba Club
+API = os.getenv("BARBER_API", "https://api.bestbarbers.app")
+BARBERSHOP_ID = int(os.getenv("BARBERSHOP_ID", 12345))
+CLIENT_ID = int(os.getenv("CLIENT_ID", 99999))
+DEFAULT_BARBER_ID = int(os.getenv("DEFAULT_BARBER_ID", 13001))
+DEFAULT_SERVICES = [int(s) for s in os.getenv("DEFAULT_SERVICES", "47000").split(",")]
 
 # Horários preferidos: tenta 09:30 e avança de 30 em 30 min até 11:00
 PREFERRED_HOURS = ["09:30", "10:00", "10:30", "11:00"]
