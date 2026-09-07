@@ -1,0 +1,13 @@
+token.json
+token.json.bak
+.env
+.env.local
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.log
+*.log.bak
+.DS_Store
+chrome-profile/
+captured_calls.json
