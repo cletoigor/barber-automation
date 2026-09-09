@@ -1,7 +1,13 @@
 import asyncio
 import json
 import os
+from dotenv import load_dotenv
 from playwright.async_api import async_playwright
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+_SHOP = os.getenv("BARBERSHOP_ID", "10000")
+BOOKING_URL = os.getenv(
+    "BARBER_BOOKING_URL", f"https://agendamentos.bestbarbers.app/barbershop/id/{_SHOP}")
 
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "captured_calls.json")
 API_CALLS = []
@@ -55,7 +61,7 @@ async def main():
         page.on("response", handle_response)
 
         print("Abrindo o site da barbearia...")
-        await page.goto("https://agendamentos.bestbarbers.app/barbershop/id/10000")
+        await page.goto(BOOKING_URL)
 
         print("\n" + "=" * 60)
         print("  Faça o fluxo completo de agendamento (Assinatura) no browser.")

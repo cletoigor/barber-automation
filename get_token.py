@@ -13,6 +13,7 @@ import shutil
 import sys
 from datetime import datetime, timezone
 
+from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,7 +21,10 @@ OUTPUT = os.path.join(BASE_DIR, "token.json")
 BACKUP = os.path.join(BASE_DIR, "token.json.bak")
 PROFILE_DIR = os.path.join(BASE_DIR, "chrome-profile")
 TOKEN_KEY = "@BestBarbers:token"
-LOGIN_URL = "https://agendamentos.bestbarbers.app/barbershop/id/10000"
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+_SHOP = os.getenv("BARBERSHOP_ID", "10000")
+LOGIN_URL = os.getenv(
+    "BARBER_BOOKING_URL", f"https://agendamentos.bestbarbers.app/barbershop/id/{_SHOP}")
 TIMEOUT_SECONDS = 300
 
 

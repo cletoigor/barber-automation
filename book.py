@@ -3,7 +3,7 @@ Automação de agendamento de assinatura — the barbershop (BestBarbers)
 
 Uso:
     python3 book.py                  # próximo horário disponível com preferências padrão
-    python3 book.py --barber 13001   # barbeiro específico (barber B=13001, barber C=13002, etc.)
+    python3 book.py --barber 13001   # barbeiro específico (ids no .env)
     python3 book.py --days 5         # buscar horários nos próximos N dias
     python3 book.py --dry-run        # simular sem criar agendamento
 """
@@ -19,17 +19,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API = "https://api.bestbarbers.app"
-BARBERSHOP_ID = 10000
-CLIENT_ID = 300000  # the client
+# Shop-specific ids come from .env so this file carries no real account data.
+API = os.getenv("BARBER_API", "https://api.bestbarbers.app")
+BARBERSHOP_ID = int(os.getenv("BARBERSHOP_ID", "10000"))
+CLIENT_ID = int(os.getenv("CLIENT_ID", "300000"))
 
 # Barbers disponíveis:
-# 13001 = barber B | 13002 = barber C | 13000 = barber A | 13003 = barber D
-DEFAULT_BARBER_ID = 13000
+# Barber ids are shop-specific; set DEFAULT_BARBER_ID in .env
+DEFAULT_BARBER_ID = int(os.getenv("DEFAULT_BARBER_ID", "13000"))
 
 # Serviços de assinatura disponíveis:
-# 47000 = Barba Club | 47001 = Cabelo Club | 47002 = Cabelo e Barba Club
-DEFAULT_SERVICES = [47000]  # Barba Club
+# Service ids are shop-specific; set DEFAULT_SERVICES in .env (comma-separated)
+DEFAULT_SERVICES = [int(x) for x in os.getenv("DEFAULT_SERVICES", "47000").split(",") if x.strip()]
 
 # Horários preferidos: tenta 09:30 e avança de 30 em 30 min até 11:00
 PREFERRED_HOURS = ["09:30", "10:00", "10:30", "11:00"]

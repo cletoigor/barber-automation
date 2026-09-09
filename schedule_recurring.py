@@ -21,11 +21,13 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-API = "https://api.bestbarbers.app"
-BARBERSHOP_ID = 10000
-CLIENT_ID = 300000
-BARBER_ID = 13000          # barber A
-SERVICES = [47000]         # Barba Club (assinatura)
+# Shop-specific ids come from .env so this file carries no real account data.
+# The defaults below are placeholders and will not book anything real.
+API = os.getenv("BARBER_API", "https://api.bestbarbers.app")
+BARBERSHOP_ID = int(os.getenv("BARBERSHOP_ID", "10000"))
+CLIENT_ID = int(os.getenv("CLIENT_ID", "300000"))
+BARBER_ID = int(os.getenv("DEFAULT_BARBER_ID", "13000"))
+SERVICES = [int(s) for s in os.getenv("DEFAULT_SERVICES", "47000").split(",") if s.strip()]
 PREFERRED_HOURS = ["09:30", "10:00", "10:30", "11:00"]
 CLAUDE_BIN = "/opt/homebrew/bin/claude"
 
