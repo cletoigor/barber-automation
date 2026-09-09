@@ -1,6 +1,18 @@
 # barber-automation
 
-Automates weekly beard appointment booking at [the barbershop](https://agendamentos.bestbarbers.app/barbershop/id/12345) via the BestBarbers API. Finds the next available Friday slot within preferred hours (09:30–11:00), books it, and optionally updates a Google Calendar event when the time differs from the default.
+Automates weekly beard appointment booking at a BestBarbers-hosted barbershop via the BestBarbers API. Finds the next available Friday slot within preferred hours (09:30–11:00), books it, and optionally updates a Google Calendar event when the time differs from the default.
+
+## Architecture
+
+![Architecture](docs/architecture.svg)
+
+Read left to right. The two authentication paths — an email/password login and the
+cached-token fallback — converge into a single resolved token before the booking loop
+begins. Three gates stand between the script and anything that touches the outside
+world: `--dry-run`, the `already_booked_this_week()` idempotency check, and the
+fail-closed token refresh, which backs up the existing token and only overwrites it on
+success. Google Calendar writes go through a Claude subprocess rather than a direct API
+client.
 
 ## Scripts
 
@@ -17,8 +29,8 @@ python3 schedule_recurring.py --dry-run # simulate without creating any appointm
 Lower-level script for on-demand booking. Searches across any barber and day range.
 
 ```bash
-python3 book.py                         # next available slot (default: barber B, Beard Club)
-python3 book.py --barber 13002          # specific barber
+python3 book.py                         # next available slot (default barber, default service)
+python3 book.py --barber 13001          # specific barber
 python3 book.py --days 14              # search up to 14 days ahead
 python3 book.py --dry-run
 ```
@@ -39,10 +51,10 @@ BARBER_API=https://api.bestbarbers.app
 BARBERSHOP_ID=12345
 CLIENT_ID=99999
 
-# Barbers: 13001=barber B | 13002=barber C | 13000=barber A | 13003=barber D
-DEFAULT_BARBER_ID=13001
+# Barbers: see the table below for the IDs in your shop
+DEFAULT_BARBER_ID=13000
 
-# Subscription services: 47000=Beard Club | 47001=Hair Club | 47002=Hair+Beard Club
+# Subscription services: see the table below
 DEFAULT_SERVICES=47000
 ```
 
@@ -56,10 +68,13 @@ Run `get_token.py` once to save the session token locally. The scripts will use 
 
 | ID    | Name      |
 |-------|-----------|
-| 13001 | barber B    |
-| 13002 | barber C     |
-| 13000 | barber A |
-| 13003 | barber D    |
+| 13000 | Barber A  |
+| 13001 | Barber B  |
+| 13002 | Barber C  |
+| 13003 | Barber D  |
+
+IDs above are placeholders. Read the real ones for your shop from the booking
+site's network traffic (`capture.py` helps) and set them in `.env`.
 
 ## Subscription services
 

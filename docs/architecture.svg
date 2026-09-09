@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="2440" height="1320" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2440 1320" role="img" aria-label="Diagram of the Barbeiro automation. Top track: launchd's plist embeds an inline bash -c command (it does not invoke run.sh, which is a separate manual entry point with the same body) every Tuesday at 11:30, which writes a timestamped header to cron.log and runs schedule_recurring.py. Auth track: get_token() first tries POST v3/login with .env email and password; on failure it falls back to reading the cached token.json key @BestBarbers:token; if that is also empty the script exits, and only then does an operator run get_token.py, which opens a persistent Playwright Chrome profile, polls localStorage every 2 seconds for up to 300 seconds for the token, and — only on success — backs up token.json to token.json.bak before overwriting it. Both auth paths converge into a single resolved token feeding next_fridays(24), which enumerates the next 24 Friday dates. For each Friday the script calls get_slots() against POST appointment/available-times and pick_hour() walks the preference ladder 09:30, 10:00, 10:30, 11:00. If no hour is free, the run bypasses booking straight to the Claude subprocess, which shells out to the Claude CLI with the Google Calendar MCP tool to create a red Tomato-colored alert event via notify_no_slot() with a 30 minute reminder, and the run stops unless --all was passed. If an hour is free, already_booked_this_week() checks GET client/appointments for an existing booking in the Monday-to-Sunday week of that Friday — GATE 2, the idempotency guard; if already booked the run skips or stops. Otherwise book() sends POST appointments/new-appointment, gated by GATE 1, the --dry-run flag, which threads through both book() and the Calendar helpers and, when true, returns the payload without sending it. On a real booking, the same Claude subprocess runs create_calendar_event() to create a Tangerine-colored event with 24 hour and 1 hour reminders. A separate, simpler CLI sibling, book.py, runs independently: it reads the same token.json, loops the next N days with --barber, --days and --services flags, and calls create_appointment() under the same --dry-run gate, but has no Calendar integration and no already-booked guard.">
+<style>
+/* Tokens inlined from the page stylesheet so this file stands alone. */
+svg {
+--ground:#F1F3EF;
+    --surface:#FDFDFB;
+    --surface-2:#E9ECE6;
+    --ink:#171B18;
+    --muted:#5D6862;
+    --line:#C3CBC2;
+    --line-soft:#DDE2DA;
+
+    --signal:#0F7B80;   --signal-bg:#E2EFEE;    /* compute / assets      */
+    --store:#9A6716;    --store-bg:#F4EBDA;     /* storage / datasets    */
+    --logic:#3A6446;    --logic-bg:#E4EDE4;     /* pure logic            */
+    --client:#35548C;   --client-bg:#E3EAF4;    /* UIs / consumers       */
+    --interlock:#A8351F;--interlock-bg:#F6E6E1; /* gated write path      */
+    --gate:#55468A;     --gate-bg:#EAE6F3;      /* soft gate / policy    */
+
+    --lane-a:#E9EDE8;
+    --lane-b:#E4EFEF;
+    --lane-c:#F2EBDD;
+    --lane-d:#E7EDE7;
+    --lane-e:#E5EAF2;
+}
+/* Google Fonts cannot load inside a GitHub-rendered SVG; the stacks below
+   already name generic fallbacks, which is what readers will actually see. */
+</style>
+
+
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+          </marker>
+          <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--interlock)"/>
+          </marker>
+        </defs>
+
+        <!-- ================= LEGEND ================= -->
+        <text x="20" y="24" font-family="Archivo, sans-serif" font-size="12.5" font-weight="700" fill="var(--ink)">Legend</text>
+
+        <line x1="110" y1="20" x2="180" y2="20" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <text x="190" y="24" font-family="Source Serif 4, serif" font-size="11" fill="var(--muted)">data / control flow</text>
+
+        <line x1="410" y1="20" x2="480" y2="20" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+        <text x="490" y="24" font-family="Source Serif 4, serif" font-size="11" fill="var(--muted)">read-only access</text>
+
+        <line x1="700" y1="20" x2="770" y2="20" stroke="var(--interlock)" stroke-width="2.2" marker-end="url(#ahr)"/>
+        <text x="780" y="24" font-family="Source Serif 4, serif" font-size="11" fill="var(--muted)">write / can affect the outside world — labelled GATE&#160;n in the order it is crossed</text>
+
+        <rect x="1360" y="10" width="34" height="18" rx="2" fill="var(--gate-bg)" stroke="var(--gate)" stroke-width="1.3"/>
+        <text x="1404" y="24" font-family="Source Serif 4, serif" font-size="11" fill="var(--muted)">soft / internal gate (no external effect)</text>
+
+        <ellipse cx="1682" cy="14" rx="26" ry="5" fill="var(--store-bg)" stroke="var(--store)" stroke-width="1.3"/>
+        <rect x="1656" y="14" width="52" height="14" fill="var(--surface)" stroke="none"/>
+        <ellipse cx="1682" cy="28" rx="26" ry="5" fill="var(--surface)" stroke="var(--store)" stroke-width="1.3"/>
+        <text x="1718" y="24" font-family="Source Serif 4, serif" font-size="11" fill="var(--muted)">stored data</text>
+
+        <rect x="1850" y="12" width="34" height="18" rx="2" fill="var(--client-bg)" stroke="var(--client)" stroke-width="1.3"/>
+        <text x="1894" y="24" font-family="Source Serif 4, serif" font-size="11" fill="var(--muted)">external system</text>
+
+        <!-- ================= LANE BANDS ================= -->
+        <rect x="0" y="60" width="2440" height="140" fill="var(--lane-a)"/>
+        <line x1="0" y1="60" x2="2440" y2="60" stroke="var(--line)" stroke-width="1"/>
+        <text x="14" y="118" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="var(--ink)">Trigger</text>
+        <text x="14" y="134" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)">launchd / bash -c (inline)</text>
+
+        <rect x="0" y="200" width="2440" height="240" fill="var(--lane-b)"/>
+        <line x1="0" y1="200" x2="2440" y2="200" stroke="var(--line)" stroke-width="1"/>
+        <text x="14" y="270" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="var(--ink)">Auth</text>
+        <text x="14" y="286" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)">get_token() / get_token.py</text>
+
+        <rect x="0" y="440" width="2440" height="240" fill="var(--lane-c)"/>
+        <line x1="0" y1="440" x2="2440" y2="440" stroke="var(--line)" stroke-width="1"/>
+        <text x="14" y="510" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="var(--ink)">Read path</text>
+        <text x="14" y="526" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)">schedule_recurring.py</text>
+
+        <rect x="0" y="680" width="2440" height="140" fill="var(--lane-d)"/>
+        <line x1="0" y1="680" x2="2440" y2="680" stroke="var(--line)" stroke-width="1"/>
+        <text x="14" y="736" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="var(--ink)">Write path</text>
+        <text x="14" y="752" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)">book()</text>
+
+        <rect x="0" y="820" width="2440" height="240" fill="var(--lane-e)"/>
+        <line x1="0" y1="820" x2="2440" y2="820" stroke="var(--line)" stroke-width="1"/>
+        <text x="14" y="890" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="var(--ink)">Claude + Calendar</text>
+        <text x="14" y="906" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)">_run_claude() → MCP</text>
+
+        <rect x="0" y="1060" width="2440" height="200" fill="var(--lane-a)"/>
+        <line x1="0" y1="1060" x2="2440" y2="1060" stroke="var(--line)" stroke-width="1"/>
+        <text x="14" y="1132" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="var(--ink)">Ad-hoc sibling</text>
+        <text x="14" y="1148" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)">book.py</text>
+
+        <!-- ================= LANE 1 — TRIGGER ================= -->
+        <rect x="170" y="95" width="200" height="65" rx="2" fill="var(--logic-bg)" stroke="var(--logic)" stroke-width="1.4"/>
+        <text x="180" y="118" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700" fill="var(--ink)">launchd</text>
+        <text x="180" y="134" font-family="Source Serif 4, serif" font-size="9.5" fill="var(--muted)">Weekday=2 (Tue) Hour=11 Min=30</text>
+        <text x="180" y="148" font-family="Source Serif 4, serif" font-size="9.5" fill="var(--muted)">StartCalendarInterval, not cron</text>
+
+        <rect x="430" y="95" width="220" height="65" rx="2" fill="var(--logic-bg)" stroke="var(--logic)" stroke-width="1.4"/>
+        <text x="440" y="118" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="var(--ink)">bash -c (inline)</text>
+        <text x="440" y="134" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">sets HOME + PATH (py3.8 + brew)</text>
+        <text x="440" y="148" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">writes "--- ts ---" header first</text>
+
+        <path d="M 370 127 H 425" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+
+        <ellipse cx="800" cy="102" rx="90" ry="9" fill="var(--store-bg)" stroke="var(--store)" stroke-width="1.4"/>
+        <rect x="710" y="102" width="180" height="46" fill="var(--surface)" stroke="none"/>
+        <line x1="710" y1="102" x2="710" y2="148" stroke="var(--store)" stroke-width="1.4"/>
+        <line x1="890" y1="102" x2="890" y2="148" stroke="var(--store)" stroke-width="1.4"/>
+        <ellipse cx="800" cy="148" rx="90" ry="9" fill="var(--surface)" stroke="var(--store)" stroke-width="1.4"/>
+        <text x="800" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--ink)">cron.log</text>
+        <text x="800" y="134" text-anchor="middle" font-family="Source Serif 4, serif" font-size="8.7" fill="var(--muted)">header / stdout+stderr / "exit: $?"</text>
+
+        <path d="M 650 127 H 705" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <path d="M 540 160 V 240" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+
+        <rect x="960" y="100" width="190" height="55" rx="2" fill="none" stroke="var(--line)" stroke-width="1.3" stroke-dasharray="4 3"/>
+        <text x="970" y="120" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="700" fill="var(--muted)">run.sh (manual)</text>
+        <text x="970" y="134" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">same body — launchd runs the</text>
+        <text x="970" y="146" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">command inline, not this file</text>
+
+        <!-- ================= LANE 2 — AUTH ================= -->
+        <!-- row A: fast path -->
+        <rect x="430" y="245" width="220" height="70" rx="2" fill="var(--logic-bg)" stroke="var(--logic)" stroke-width="1.4"/>
+        <text x="440" y="266" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="var(--ink)">get_token() → POST v3/login</text>
+        <text x="440" y="281" font-family="Source Serif 4, serif" font-size="8.7" fill="var(--muted)">tries email+password first (.env)</text>
+        <text x="440" y="294" font-family="Source Serif 4, serif" font-size="8.7" fill="var(--muted)">BARBER_EMAIL / BARBER_PASSWORD</text>
+
+        <rect x="665" y="245" width="250" height="70" rx="2" fill="var(--signal-bg)" stroke="var(--signal)" stroke-width="1.4"/>
+        <text x="675" y="266" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="var(--ink)">cached-token fallback</text>
+        <text x="675" y="281" font-family="Source Serif 4, serif" font-size="8.7" fill="var(--muted)">on failure: reads &amp; strips quotes</text>
+        <text x="675" y="294" font-family="Source Serif 4, serif" font-size="8.7" fill="var(--muted)">from token.json (@BestBarbers:token)</text>
+
+        <path d="M 650 280 H 660" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+
+        <!-- row B: slow / manual path -->
+        <rect x="430" y="345" width="220" height="70" rx="2" fill="var(--interlock-bg)" stroke="var(--interlock)" stroke-width="1.6"/>
+        <text x="440" y="366" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="var(--interlock)">GATE 3 · fail-closed refresh</text>
+        <text x="440" y="381" font-family="Source Serif 4, serif" font-size="8.7" fill="var(--muted)">operator runs get_token.py by hand</text>
+        <text x="440" y="394" font-family="Source Serif 4, serif" font-size="8.7" fill="var(--muted)">after the script exits on empty token</text>
+
+        <rect x="665" y="345" width="250" height="70" rx="2" fill="var(--interlock-bg)" stroke="var(--interlock)" stroke-width="1.6"/>
+        <text x="675" y="362" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="700" fill="var(--ink)">get_token.py → Playwright</text>
+        <text x="675" y="376" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">chrome-profile/, polls localStorage</text>
+        <text x="675" y="388" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">2s up to 300s; backs up token.json</text>
+        <text x="675" y="400" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">to .bak first, then overwrites</text>
+
+        <path d="M 650 380 H 660" fill="none" stroke="var(--interlock)" stroke-width="2" marker-end="url(#ahr)"/>
+
+        <!-- convergence: both rows continue forward to next_fridays() in lane 3 -->
+        <path d="M 915 280 H 918 V 505 H 925" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <path d="M 915 380 H 918 V 520 H 925" fill="none" stroke="var(--interlock)" stroke-width="2" marker-end="url(#ahr)"/>
+        <rect x="760" y="490" width="185" height="13" fill="var(--surface)"/>
+        <text x="852" y="500" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--muted)">token acquired (either path)</text>
+
+        <!-- ================= LANE 3 — READ PATH ================= -->
+        <rect x="930" y="475" width="260" height="90" rx="2" fill="var(--logic-bg)" stroke="var(--logic)" stroke-width="1.4"/>
+        <text x="940" y="496" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="var(--ink)">next_fridays(24) → get_slots()</text>
+        <text x="940" y="509" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">→ pick_hour(); enumerates next 24</text>
+        <text x="940" y="521" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">Fridays, POST available-times, ladder</text>
+        <text x="940" y="533" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">09:30→10:00→10:30→11:00</text>
+
+        <path d="M 1190 500 H 1200" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <rect x="1145" y="480" width="34" height="13" fill="var(--surface)"/>
+        <text x="1162" y="490" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="var(--muted)">none</text>
+
+        <path d="M 1190 545 V 632 H 1200" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <rect x="1150" y="608" width="46" height="13" fill="var(--surface)"/>
+        <text x="1173" y="618" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="var(--muted)">found h</text>
+
+        <rect x="1205" y="475" width="250" height="60" rx="2" fill="var(--surface-2)" stroke="var(--muted)" stroke-width="1.3"/>
+        <text x="1215" y="495" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="var(--ink)">no hour free</text>
+        <text x="1215" y="509" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">none of the 4 preferred slots open</text>
+        <text x="1215" y="521" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">→ Claude subprocess (no booking)</text>
+
+        <rect x="1205" y="595" width="250" height="80" rx="2" fill="var(--gate-bg)" stroke="var(--gate)" stroke-width="1.5"/>
+        <text x="1215" y="614" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="700" fill="var(--gate)">GATE 2 · already_booked_this_week()</text>
+        <text x="1215" y="627" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">GET client/appointments; checks the</text>
+        <text x="1215" y="639" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">Mon–Sun window of the target Friday;</text>
+        <text x="1215" y="651" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">if booked → skip/stop (--all continues)</text>
+
+        <path d="M 1455 635 V 745 H 1465" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+
+        <!-- ================= LANE 4 — WRITE PATH ================= -->
+        <rect x="1470" y="710" width="220" height="70" rx="2" fill="var(--interlock-bg)" stroke="var(--interlock)" stroke-width="1.7"/>
+        <text x="1480" y="731" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="var(--interlock)">GATE 1 · book()</text>
+        <text x="1480" y="746" font-family="Source Serif 4, serif" font-size="8.7" fill="var(--muted)">POST new-appointment — --dry-run</text>
+        <text x="1480" y="758" font-family="Source Serif 4, serif" font-size="8.7" fill="var(--muted)">returns the payload instead of sending it</text>
+
+        <!-- ================= LANE 5 — CLAUDE + CALENDAR ================= -->
+        <rect x="1705" y="850" width="220" height="70" rx="2" fill="var(--interlock-bg)" stroke="var(--interlock)" stroke-width="1.6"/>
+        <text x="1715" y="871" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="var(--ink)">Claude subprocess</text>
+        <text x="1715" y="885" font-family="Source Serif 4, serif" font-size="8.5" fill="var(--muted)">claude -p &lt;prompt&gt; --allowedTools</text>
+        <text x="1715" y="897" font-family="Source Serif 4, serif" font-size="8.5" fill="var(--muted)">…Calendar__create_event, 90s timeout</text>
+
+        <path d="M 1690 745 V 885 H 1700" fill="none" stroke="var(--interlock)" stroke-width="2" marker-end="url(#ahr)"/>
+        <rect x="1595" y="865" width="60" height="13" fill="var(--surface)"/>
+        <text x="1625" y="875" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="var(--muted)">booked</text>
+
+        <path d="M 1455 505 H 1460 V 905 H 1700" fill="none" stroke="var(--interlock)" stroke-width="2" marker-end="url(#ahr)"/>
+        <rect x="1400" y="612" width="54" height="13" fill="var(--surface)"/>
+        <text x="1427" y="622" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="var(--muted)">no slot</text>
+
+        <rect x="1940" y="850" width="240" height="65" rx="2" fill="var(--interlock-bg)" stroke="var(--interlock)" stroke-width="1.6"/>
+        <text x="1950" y="870" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="700" fill="var(--ink)">create_calendar_event()</text>
+        <text x="1950" y="884" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">"Barba — the barbershop (barber A)"</text>
+        <text x="1950" y="896" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">colorId 6 Tangerine; 24h + 1h reminders</text>
+
+        <rect x="1940" y="955" width="240" height="65" rx="2" fill="var(--interlock-bg)" stroke="var(--interlock)" stroke-width="1.6"/>
+        <text x="1950" y="975" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="700" fill="var(--ink)">notify_no_slot()</text>
+        <text x="1950" y="989" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">"⚠ Barba NÃO agendada"</text>
+        <text x="1950" y="1001" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">colorId 11 Tomato; 30-min reminder</text>
+
+        <path d="M 1925 875 H 1935 V 867 H 1940" fill="none" stroke="var(--interlock)" stroke-width="2" marker-end="url(#ahr)"/>
+        <path d="M 1925 895 H 1935 V 987 H 1940" fill="none" stroke="var(--interlock)" stroke-width="2" marker-end="url(#ahr)"/>
+
+        <rect x="2195" y="875" width="170" height="80" rx="2" fill="var(--client-bg)" stroke="var(--client)" stroke-width="1.5"/>
+        <text x="2205" y="896" font-family="Archivo, sans-serif" font-size="10.5" font-weight="700" fill="var(--ink)">Google Calendar</text>
+        <text x="2205" y="911" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">external service, reached only</text>
+        <text x="2205" y="923" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">through the MCP tool above —</text>
+        <text x="2205" y="935" font-family="Source Serif 4, serif" font-size="8.3" fill="var(--muted)">never a direct API client</text>
+
+        <path d="M 2180 882 H 2190" fill="none" stroke="var(--interlock)" stroke-width="2" marker-end="url(#ahr)"/>
+        <path d="M 2180 987 H 2185 V 920 H 2190" fill="none" stroke="var(--interlock)" stroke-width="2" marker-end="url(#ahr)"/>
+
+        <!-- ================= LANE 6 — book.py sibling ================= -->
+        <rect x="170" y="1095" width="220" height="65" rx="2" fill="var(--logic-bg)" stroke="var(--logic)" stroke-width="1.4"/>
+        <text x="180" y="1118" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700" fill="var(--ink)">book.py</text>
+        <text x="180" y="1133" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">--barber --days --services --dry-run</text>
+        <text x="180" y="1146" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">independent CLI entrypoint, ad hoc</text>
+
+        <rect x="450" y="1095" width="220" height="65" rx="2" fill="var(--logic-bg)" stroke="var(--logic)" stroke-width="1.4"/>
+        <text x="460" y="1118" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="var(--ink)">get_token(email, pw)</text>
+        <text x="460" y="1133" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">or reads token.json directly —</text>
+        <text x="460" y="1146" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">no fail-closed refresh of its own</text>
+
+        <path d="M 390 1127 H 445" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <path d="M 670 1113 H 700 V 425 H 790 V 420" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+        <rect x="705" y="894" width="40" height="13" fill="var(--surface)"/>
+        <text x="725" y="904" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--muted)">reads</text>
+
+        <rect x="750" y="1095" width="220" height="65" rx="2" fill="var(--signal-bg)" stroke="var(--signal)" stroke-width="1.4"/>
+        <text x="760" y="1118" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="var(--ink)">loop next N days</text>
+        <text x="760" y="1133" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">get_available_slots() per day,</text>
+        <text x="760" y="1146" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">POST available-times?type=client</text>
+
+        <path d="M 670 1127 H 745" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+
+        <rect x="1030" y="1095" width="220" height="65" rx="2" fill="var(--logic-bg)" stroke="var(--logic)" stroke-width="1.4"/>
+        <text x="1040" y="1118" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="var(--ink)">pick_slot()</text>
+        <text x="1040" y="1133" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">first day with any free slot wins;</text>
+        <text x="1040" y="1146" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">preferred hour used only as tiebreak</text>
+
+        <path d="M 970 1127 H 1025" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+
+        <rect x="1310" y="1095" width="260" height="65" rx="2" fill="var(--interlock-bg)" stroke="var(--interlock)" stroke-width="1.6"/>
+        <text x="1320" y="1116" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="var(--interlock)">create_appointment()</text>
+        <text x="1320" y="1131" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">--dry-run prints the body only;</text>
+        <text x="1320" y="1144" font-family="Source Serif 4, serif" font-size="9" fill="var(--muted)">no Calendar write, no dedupe guard</text>
+
+        <path d="M 1250 1127 H 1305" fill="none" stroke="var(--interlock)" stroke-width="2" marker-end="url(#ahr)"/>
+
+      </svg>
