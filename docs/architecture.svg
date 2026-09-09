@@ -157,6 +157,36 @@ svg {
         <rect x="760" y="490" width="185" height="13" fill="var(--surface)"/>
         <text x="852" y="500" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--muted)">token acquired (either path)</text>
 
+        <!-- token.json cylinder — read by the cached-token fallback, overwritten by get_token.py -->
+        <ellipse cx="1075" cy="300" rx="70" ry="8" fill="var(--surface)" stroke="var(--store)" stroke-width="1.4"/>
+        <rect x="1005" y="250" width="140" height="50" fill="var(--surface)" stroke="none"/>
+        <line x1="1005" y1="250" x2="1005" y2="300" stroke="var(--store)" stroke-width="1.4"/>
+        <line x1="1145" y1="250" x2="1145" y2="300" stroke="var(--store)" stroke-width="1.4"/>
+        <ellipse cx="1075" cy="250" rx="70" ry="8" fill="var(--store-bg)" stroke="var(--store)" stroke-width="1.4"/>
+        <text x="1075" y="273" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="var(--ink)">token.json</text>
+        <text x="1075" y="287" text-anchor="middle" font-family="Source Serif 4, serif" font-size="8" fill="var(--muted)">@BestBarbers:token</text>
+
+        <!-- token.json.bak cylinder — receives the pre-overwrite backup -->
+        <ellipse cx="1075" cy="400" rx="70" ry="8" fill="var(--surface)" stroke="var(--store)" stroke-width="1.4"/>
+        <rect x="1005" y="350" width="140" height="50" fill="var(--surface)" stroke="none"/>
+        <line x1="1005" y1="350" x2="1005" y2="400" stroke="var(--store)" stroke-width="1.4"/>
+        <line x1="1145" y1="350" x2="1145" y2="400" stroke="var(--store)" stroke-width="1.4"/>
+        <ellipse cx="1075" cy="350" rx="70" ry="8" fill="var(--store-bg)" stroke="var(--store)" stroke-width="1.4"/>
+        <text x="1075" y="373" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="var(--ink)">token.json.bak</text>
+        <text x="1075" y="387" text-anchor="middle" font-family="Source Serif 4, serif" font-size="8" fill="var(--muted)">pre-overwrite snapshot</text>
+
+        <path d="M 915 298 H 1000" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+        <rect x="922" y="283" width="40" height="13" fill="var(--surface)"/>
+        <text x="942" y="293" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="var(--muted)">reads</text>
+
+        <path d="M 915 372 H 1000" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <rect x="922" y="358" width="50" height="13" fill="var(--surface)"/>
+        <text x="947" y="368" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="var(--muted)">&#9312; backup</text>
+
+        <path d="M 915 392 H 975 V 275 H 1000" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <rect x="920" y="260" width="70" height="13" fill="var(--surface)"/>
+        <text x="955" y="270" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="var(--muted)">&#9313; overwrite</text>
+
         <!-- ================= LANE 3 — READ PATH ================= -->
         <rect x="930" y="475" width="260" height="90" rx="2" fill="var(--logic-bg)" stroke="var(--logic)" stroke-width="1.4"/>
         <text x="940" y="496" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="var(--ink)">next_fridays(24) → get_slots()</text>
